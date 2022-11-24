@@ -24,26 +24,28 @@ Tdb supports the following seven built-in datatypes.
 |**Type**<a name="table-of-built-in-types"></a>|**Sentinal**|**Example(s)**|**Notes**|
 |-----------|----------------------|--|--|
 |`bool`     ||`F` `T`|No sentinal. A Tdb reader should also accept 'f', 'N', 'n', 't', 'Y', 'y'|
-|`bytes`    |`(04)`|`(20AC 65 66 48)`|There must be an even number of case-insensitive hex digits; whitespace (spaces, newlines, etc.) optional.|
+|`bytes`    ||`(20AC 65 66 48)`|No sentinal; use `()` empty. There must be an even number of case-insensitive hex digits; whitespace (spaces, newlines, etc.) optional.|
 |`date`     |`1808-08-08`   |`2022-04-01`|Basic ISO8601 YYYY-MM-DD format.|
 |`datetime` |`1808-08-08T08:08:08`|`2022-04-01T16:11:51`|ISO8601 YYYY-MM-DDTHH[:MM[:SS]] format; 1-sec resolution no timezone support.|
 |`int`      |`-1808080808`|`-192` `+234` `7891409`|Standard integers with optional sign.|
 |`real`     |`-1808080808.0808`|`0.15` `0.7e-9` `2245.389`|Standard and scientific notation.|
-|`str`      |`< >`|`<Some text which may include newlines>`|For &, <, >, use \&amp;, \&lt;, \&gt; respectively.|
+|`str`      ||`<Some text which may include newlines>`|No sentinal; use `<>`
+empty. For &, <, >, use \&amp;, \&lt;, \&gt; respectively.|
 
 All fields are _not null_ and must contain a valid value of the field's
-type. Except for `bool` fields use your own or the default sentinal value
-(signified with `!`) for unknown values.
+type. For `date`, `datetime`, `int`, and `real` fields there is a sentinal
+value (signified with `!`) which can be used (e.g., to indicate an unknown
+value).
 
 Strings may not include `&`, `<` or `>`, so if they are needed, they must be
 replaced by the XML/HTML escapes `&amp;`, `&lt;`, and `&gt;` respectively.
-Strings respect any whitespace they contain, including newlines. The
-sentinal for strings is a single EOT character (U+0004).
+Strings respect any whitespace they contain, including newlines.
 
 Each field value is separated from its neighbor by whitespace, and
 conventionally records are separated by newlines. However, in practice,
 since every field in every record must be present (even if only a sentinal
-value), records may be laid out however you like.
+value or an empty bytes or string), records may be laid out however you
+like.
 
 Where whitespace is allowed (or required) it may consist of one or more
 spaces, tabs, or newlines in any combination.
@@ -92,12 +94,12 @@ viable alternative. For example:
     [Customers CID int Company str Address str Contact str Email str
     %
     50 <Best People> <123 Somewhere> <John Doe> <j@doe.com> 
-    19 <Supersuppliers> ! <Jane Doe> <jane@super.com> 
+    19 <Supersuppliers> <> <Jane Doe> <jane@super.com> 
     ]
     [Invoices INUM int CID int Raised_Date date Due_Date date Paid bool Description str
     %
     152 50 2022-01-17 2022-02-17 no <COD> 
-    153 19 2022-01-19 2022-02-19 yes !
+    153 19 2022-01-19 2022-02-19 yes <>
     ]
     [Items IID int INUM int Delivery_Date date Unit_Price real Quantity int Description str
     %
@@ -107,8 +109,8 @@ viable alternative. For example:
     ]
 
 In the Customers table the second customer's Address and in the Invoices
-table, the second invoice's Description both use their field types' sentinal
-value (signified by `!`).
+table, the second invoice's Description both have empty strings as their
+values.
 
 ### Minimal Tdb Files
 
@@ -135,7 +137,7 @@ This is like the previous table but now with one record containing the value
 
 Again like the previous table, but now with two records, the first
 containing the value `0`, and the second containing the `int` type's
-sentinal value of `1808080808`.
+sentinal value of `-1808080808`.
 
 ### Metadata
 
@@ -164,12 +166,12 @@ A Tdb file consists of one or more tables.
     RECORD      ::= OWS FIELD (RWS FIELD)*
     FIELD       ::= BOOL | BYTES | DATE | DATETIME | INT | REAL | STR
     BOOL        ::= /[FfTtYyNn]/
-    BYTES       ::= '(' (OWS [A-Fa-f0-9]{2})* OWS ')' | SENTINAL
+    BYTES       ::= '(' (OWS [A-Fa-f0-9]{2})* OWS ')'
     DATE        ::= /\d\d\d\d-\d\d-\d\d/ | SENTINAL # basic ISO8601 YYYY-MM-DD format
     DATETIME    ::= /\d\d\d\d-\d\d-\d\dT\d\d(\d\d(\d\d)?)?/ | SENTINAL
     INT         ::= /[-+]?\d+/ | SENTINAL
     REAL        ::= ... | SENTINAL # standard or scientific notation
-    STR         ::= /[<][^<>]*?[>]/ | SENTINAL # newlines allowed, and &amp; &lt; &gt; supported i.e., XML
+    STR         ::= /[<][^<>]*?[>]/ # newlines allowed, and &amp; &lt; &gt; supported i.e., XML
     SENTINAL    ::= '!'
     IDENFIFIER  ::= /[_\p{L}]\w{0,31}/ # Must start with a letter or underscore; may not be a built-in constant
     OWS         ::= /[\s\n]*/
@@ -177,8 +179,10 @@ A Tdb file consists of one or more tables.
 
 _Notes_
 
-- Every field is _not null_. Except for `bool` fields use your own or the
-  default sentinal (signified with `!`) for fields with an unknown value.
+- Every field is _not null_ and must contain a valid value of the field's
+  type. For `date`, `datetime`, `int`, and `real` fields there is a sentinal
+  value (signified with `!`) which can be used (e.g., to indicate an unknown
+  value).
 - A Tdb file _must_ contain at least one table even if it is empty, i.e.,
   has no records.
 - A Tdb writer should always write ``bool``s as `F` or `T`; but a Tdb reader

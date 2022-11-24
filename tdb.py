@@ -15,17 +15,16 @@ Perhaps best of all, a single Tdb file may contain one—or more—tables.
 import datetime
 import gzip
 import io
+import math
 import pathlib
 from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-BYTES_SENTINAL = b'\x04'
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
 INT_SENTINAL = -1808080808
 REAL_SENTINAL = -1808080808.0808
-STR_SENTINAL = '\x04'
 
 
 class Tdb:
@@ -214,10 +213,8 @@ def _advance(text, column):
 
 
 def _handle_sentinel(kind, record, column, lino):
-    if kind == 'bool':
-        raise Error(f'{lino}#bool fields don\'t allow sentinals')
-    elif kind == 'bytes':
-        record[column] = BYTES_SENTINAL
+    if kind in {'bool', 'bytes', 'str'}:
+        raise Error(f'{lino}#{kind} fields don\'t allow sentinals')
     elif kind == 'date':
         record[column] = DATE_SENTINAL
     elif kind == 'datetime':
@@ -226,8 +223,6 @@ def _handle_sentinel(kind, record, column, lino):
         record[column] = INT_SENTINAL
     elif kind == 'real':
         record[column] = REAL_SENTINAL
-    else: # str
-        record[column] = STR_SENTINAL
 
 
 def _handle_bool(kind, value, record, column, lino):
@@ -335,22 +330,33 @@ def _write_tdb(out, tables, decimals):
                 if kind == 'bool':
                     out.write('T' if value else 'F')
                 elif kind == 'bytes':
-                    pass # TODO
+                    out.write(f'({value.hex()})')
                 elif kind == 'date':
-                    pass # TODO
+                    if value == DATE_SENTINAL:
+                        out.write('!')
+                    else:
+                        out.write(value.isoformat())
                 elif kind == 'datetime':
-                    pass # TODO
+                    if value == DATETIME_SENTINAL:
+                        out.write('!')
+                    else:
+                        out.write(value.isoformat()[:19])
                 elif kind == 'int':
-                    out.write(str(value))
+                    if value == INT_SENTINAL:
+                        out.write('!')
+                    else:
+                        out.write(str(value))
                 elif kind == 'real':
-                    if decimals <= 0:
+                    if math.isclose(value, REAL_SENTINAL):
+                        out.write('!')
+                    elif decimals <= 0:
                         out.write(f'{value:g}')
                     else:
                         out.write(f'{value:.{decimals}f}')
                 else: # str
                     out.write(f'<{escape(value)}>')
             out.write('\n')
-        out.write('\n]\n')
+        out.write(']\n')
 
 
 class MetaField:
