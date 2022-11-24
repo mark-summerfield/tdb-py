@@ -20,7 +20,6 @@ from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-
 BYTES_SENTINAL = b'\x04'
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
@@ -44,15 +43,15 @@ class Tdb:
             opener = (gzip.open
                       if filename_or_filelike[-3:].lower().endswith('.gz')
                       else open)
-            stream = opener(filename_or_filelike, 'rt', encoding='utf-8')
+            out = opener(filename_or_filelike, 'rt', encoding='utf-8')
             close = True
         else:
-            stream = filename_or_filelike
+            out = filename_or_filelike
         try:
-            self.loads(stream.read())
+            self.loads(out.read())
         finally:
             if close:
-                stream.close()
+                out.close()
 
 
     def loads(self, text):
@@ -69,28 +68,32 @@ class Tdb:
         close = False
         if isinstance(filename_or_filelike, (str, pathlib.Path)):
             filename_or_filelike = str(filename_or_filelike)
-            opener = (gzip.open
-                      if filename_or_filelike[-3:].lower().endswith('.gz')
-                      else open)
-            stream = opener(filename_or_filelike, 'wt', encoding='utf-8')
+            if filename_or_filelike == '-':
+                out = sys.stdout
+            else:
+                opener = (
+                    gzip.open
+                    if filename_or_filelike[-3:].lower().endswith('.gz')
+                    else open)
+                out = opener(filename_or_filelike, 'wt', encoding='utf-8')
             close = True
         else:
-            stream = filename_or_filelike
+            out = filename_or_filelike
         try:
-            _write_tdb(stream, self.tables, decimals)
+            _write_tdb(out, self.tables, decimals)
         finally:
             if close:
-                stream.close()
+                out.close()
 
 
     def dumps(self, *, decimals=-1):
         '''Writes this Tdb's tables to a string which is then returned.'''
-        stream = io.StringIO()
+        out = io.StringIO()
         try:
-            self.dump(stream, decimals)
-            return stream.getvalue()
+            self.dump(out, decimals)
+            return out.getvalue()
         finally:
-            stream.close()
+            out.close()
 
 
 def load(filename_or_filelike):
@@ -123,8 +126,6 @@ def _read_tdb(text):
             tables[table.name] = table
         else: # read records into the current table
             text, lino = _read_records(text, table, lino)
-            for record in table.records: # TODO delete
-                print(record)
     return tables
 
 
@@ -319,9 +320,33 @@ def _find(text, what, message, lino):
     return text[:end], text[end + 1:], lino
 
 
-def _write_tdb(stream, tables, decimals):
+def _write_tdb(out, tables, decimals):
     for table_name, table in tables.items():
-        pass # TODO
+        out.write(f'[{table_name}')
+        for meta in table.fields_meta:
+            out.write(f' {meta.name} {meta.kind}')
+        out.write('\n%\n')
+        for record in table.records:
+            sep = ''
+            for column, value in enumerate(record):
+                out.write(sep)
+                sep = ' '
+                kind = table.fields_meta[column]
+                if kind == 'bool':
+                    out.write('T' if value else 'F')
+                elif kind == 'bytes':
+                    pass # TODO
+                elif kind == 'date':
+                    pass # TODO
+                elif kind == 'datetime':
+                    pass # TODO
+                elif kind == 'int':
+                    pass # TODO
+                elif kind == 'real':
+                    pass # TODO
+                else: # str
+                    pass # TODO
+            out.write('\n')
 
 
 class MetaField:
@@ -375,6 +400,6 @@ if __name__ == '__main__':
     if len(sys.argv) == 1 or sys.argv[1] in {'-h', '--help'}:
         raise SystemExit('usage: tdb.py <infile.tdb> [outfile.tdb]')
     infile = sys.argv[1]
-    outfile = sys.stdout if len(sys.argv) == 2 else sys.argv[2]
+    outfile = '-' if len(sys.argv) == 2 else sys.argv[2]
     db = load(infile)
     db.dump(outfile)
