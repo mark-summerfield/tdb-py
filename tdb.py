@@ -343,7 +343,10 @@ def _write_tdb(out, tables, decimals):
                 elif kind == 'int':
                     out.write(str(value))
                 elif kind == 'real':
-                    pass # TODO
+                    if decimals <= 0:
+                        out.write(f'{value:g}')
+                    else:
+                        out.write(f'{value:.{decimals}f}')
                 else: # str
                     out.write(f'<{escape(value)}>')
             out.write('\n')
