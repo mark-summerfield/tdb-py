@@ -8,14 +8,15 @@ A library supporting Tdb “Text DataBase” format.
 Tdb provides a superior alternative to CSV. In particular, Tdb tables are
 named and Tdb fields are strictly typed. Also, there is a clear distinction
 between field names and data values, and strings respect whitespace
-(including newlines) and have no problems with commas, quotes, etc.. Perhaps
-best of all, a single Tdb file may contain one—or more—tables.
+(including newlines) and have no problems with commas, quotes, etc.
+Perhaps best of all, a single Tdb file may contain one—or more—tables.
 '''
 
 import datetime
 import gzip
 import io
 import pathlib
+from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
@@ -120,7 +121,6 @@ def _read_tdb(text):
         elif c == '[':
             text, table, lino = _read_meta(text[1:], lino)
             tables[table.name] = table
-            print(table) # TODO delete
         else: # read records into the current table
             text, lino = _read_records(text, table, lino)
             for record in table.records: # TODO delete
@@ -129,30 +129,31 @@ def _read_tdb(text):
 
 
 def _read_meta(text, lino):
-    end = text.find('%')
-    if end == -1:
-        raise Error(f'{lino}#expected to find "%"')
-    lino += text[:end].count('\n')
+    found, text, lino = _find(text, '%', 'expected to find "%"', lino)
     table = Table()
     field_name = None
-    for i, part in enumerate(text[:end].split()):
+    for i, part in enumerate(found.split()):
         if i == 0:
             table.name = part
         elif i % 2 != 0:
             field_name = part
         else:
-            table.meta_fields.append(MetaField(field_name, part))
-    return text[end + 1:], table, lino + 1 # allow for %
+            table.fields_meta.append(MetaField(field_name, part))
+    return text, table, lino + 1 # allow for %
 
 
 def _read_records(text, table, lino):
     record = None
+    old_column = -1
     column = 0
     columns = table.columns
     while text:
         if record is None:
             record = table.RecordClass()
+            old_column = -1
             column = 0
+        if column != old_column:
+            kind = table.fields_meta[column].kind
         c = text[0]
         if c == '\n': # ignore whitespace
             text = text[1:]
@@ -160,20 +161,50 @@ def _read_records(text, table, lino):
         elif c in ' \t\r': # ignore whitespace
             text = text[1:]
         elif c == '!':
-            _handle_sentinel(record, column, lino)
+            _handle_sentinel(kind, record, column, lino)
             text, column = _advance(text, column)
         elif c in 'FfNn':
-            _handle_bool(False, record, column, lino)
+            _handle_bool(kind, False, record, column, lino)
             text, column = _advance(text, column)
         elif c in 'TtYy':
-            _handle_bool(True, record, column, lino)
+            _handle_bool(kind, True, record, column, lino)
             text, column = _advance(text, column)
         elif c == '(':
-            text = _handle_bytes(text[1:], record, column, lino)
+            text, lino = _handle_bytes(kind, text[1:], record, column, lino)
             column += 1
+        elif c == '<':
+            text, lino = _handle_str(kind, text[1:], record, column, lino)
+            column += 1
+        elif c == '-':
+            if kind == 'int':
+                text, lino = _handle_int(text, record, column, lino)
+            elif kind == 'real':
+                text, lino = _handle_real(text, record, column, lino)
+            else:
+                raise Error(f'{lino}#expected an {kind}')
+            column += 1
+        elif c in '0123456789':
+            if kind == 'int':
+                text, lino = _handle_int(text, record, column, lino)
+            elif kind == 'real':
+                text, lino = _handle_real(text, record, column, lino)
+            elif kind == 'date':
+                text, lino = _handle_date(text, record, column, lino)
+            elif kind == 'datetime':
+                text, lino = _handle_datetime(text, record, column, lino)
+            else:
+                raise Error(f'{lino}#expected an {kind}')
+            column += 1
+        elif c == ']': # end of table
+            if 0 < column < columns:
+                raise Error(f'{lino}#incomplete record {column + 1}/'
+                            f'{columns} fields')
+            return _skip_ws(text[1:], lino)
         else:
-            text, column = _advance(text, column) # TODO delete
-    # TODO
+            raise Error(f'{lino}#invalid character {c!r}')
+        if column == columns:
+            table.append(record)
+            record = None
     return text, lino
 
 
@@ -181,8 +212,7 @@ def _advance(text, column):
     return text[1:], column + 1
 
 
-def _handle_sentinel(record, column, lino):
-    kind = record[column].kind
+def _handle_sentinel(kind, record, column, lino):
     if kind == 'bool':
         raise Error(f'{lino}#bool fields don\'t allow sentinals')
     elif kind == 'bytes':
@@ -199,41 +229,94 @@ def _handle_sentinel(record, column, lino):
         record[column] = STR_SENTINAL
 
 
-def _handle_bool(value, record, column, lino):
-    kind = record[column].kind
+def _handle_bool(kind, value, record, column, lino):
     if kind != 'bool':
         raise Error(f'{lino}#expected type {kind}, got a bool')
     record[column] = value
 
 
-def _handle_bytes(text, record, column, lino):
-    kind = record[column].kind
+def _handle_bytes(kind, text, record, column, lino):
     if kind != 'bytes':
         raise Error(f'{lino}#expected type {kind}, got a bytes')
-    return text
+    found, text, lino = _find(text, ')', 'expected to find ")"', lino)
+    record[column] = bytes.fromhex(found)
+    return text, lino # skip )
 
 
-def _fromstr_for_kind(kind):
-    if kind == 'bool':
-        def bool_fromstr(s):
-            s = s.lower()
-            if s in 'ty':
-                return True 
-            elif s in 'fn':
-                return False 
-            raise Error(f'0#expected one of T t Y y F f N n, got {s!r}')
-        return bool_fromstr
-    if kind == 'bytes':
-        return bytes.fromhex
-    if kind == 'date':
-        return datetime.date.fromisoformat
-    if kind == 'datetime':
-        return datetime.datetime.fromisoformat
-    if kind == 'int':
-        return int
-    if kind == 'real':
-        return float
-    return str
+def _handle_str(kind, text, record, column, lino):
+    if kind != 'str':
+        raise Error(f'{lino}#expected type {kind}, got a str')
+    found, text, lino = _find(text, '>', 'expected to find ">"', lino)
+    record[column] = unescape(found)
+    return text, lino # skip )
+
+
+def _handle_int(text, record, column, lino):
+    text, found, lino = _scan(text, '-+0123456789', lino)
+    try:
+        record[column] = int(found)
+        return text, lino
+    except ValueError as err:
+        raise Error(f'{lino}#invalid int: {found!r}: {err}')
+
+
+def _handle_real(text, record, column, lino):
+    text, found, lino = _scan(text, '-+0123456789.eE', lino)
+    try:
+        record[column] = float(found)
+        return text, lino
+    except ValueError as err:
+        raise Error(f'{lino}#invalid real: {found!r}: {err}')
+
+
+def _handle_date(text, record, column, lino):
+    text, found, lino = _scan(text, '-0123456789', lino)
+    try:
+        record[column] = datetime.date.fromisoformat(found)
+        return text, lino
+    except ValueError as err:
+        raise Error(f'{lino}#invalid date: {found!r}: {err}')
+
+
+def _handle_datetime(text, record, column, lino):
+    text, found, lino = _scan(text, '-0123456789T:', lino)
+    try:
+        record[column] = datetime.datetime.fromisoformat(found)
+        return text, lino
+    except ValueError as err:
+        raise Error(f'{lino}#invalid datetime: {found!r}: {err}')
+
+
+def _scan(text, valid, lino):
+    text, lino = _skip_ws(text, lino)
+    end = 0
+    while end < len(text):
+        c = text[end]
+        if c not in valid:
+            return text[end:], text[:end], lino
+        end += 1
+    raise Error(f'{lino}#unexpected end of data')
+
+
+def _skip_ws(text, lino):
+    end = 0
+    while end < len(text):
+        c = text[end]
+        if c == '\n':
+            lino += 1
+        if c.isspace():
+            end += 1
+            continue
+        return text[end:], lino
+    return text, lino
+
+
+def _find(text, what, message, lino):
+    end = text.find(what)
+    if end == -1:
+        raise Error(f'{lino}#{message}')
+    lino += text[:end].count('\n')
+    return text[:end], text[end + 1:], lino
 
 
 def _write_tdb(stream, tables, decimals):
@@ -246,7 +329,6 @@ class MetaField:
     def __init__(self, name, kind):
         self.name = name
         self.kind = kind
-        self.fromstr = _fromstr_for_kind(kind)
 
 
     def __repr__(self):
@@ -257,7 +339,7 @@ class Table:
 
     def __init__(self):
         self.name = None
-        self.meta_fields = []
+        self.fields_meta = []
         self.records = []
         self._RecordClass = None
 
@@ -265,14 +347,14 @@ class Table:
     @property
     def RecordClass(self):
         if self._RecordClass is None:
-            self._RecordClass = editabletuple.editabletuple(self.name,
-                *[field.name for field in self.meta_fields])
+            self._RecordClass = editabletuple.editabletuple(
+                self.name, *[field.name for field in self.fields_meta])
         return self._RecordClass
 
 
     @property
     def columns(self):
-        return len(self.meta_fields)
+        return len(self.fields_meta)
 
 
     def append(self, record):
@@ -280,7 +362,7 @@ class Table:
 
 
     def __repr__(self):
-        meta = '\n  '.join((str(m) for m in self.meta_fields))
+        meta = '\n  '.join((str(m) for m in self.fields_meta))
         return f'{self.__class__.__name__}({self.name!r})\n  ' + meta
 
 
