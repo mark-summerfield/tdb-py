@@ -337,20 +337,13 @@ def _write_tdb(out, tables, decimals):
                 elif kind == 'bytes':
                     out.write(f'({value.hex()})')
                 elif kind == 'date':
-                    if value == DATE_SENTINAL:
-                        out.write('!')
-                    else:
-                        out.write(value.isoformat())
+                    out.write('!' if value == DATE_SENTINAL else
+                              value.isoformat())
                 elif kind == 'datetime':
-                    if value == DATETIME_SENTINAL:
-                        out.write('!')
-                    else:
-                        out.write(value.isoformat()[:19])
+                    out.write('!' if value == DATETIME_SENTINAL else
+                              value.isoformat()[:19])
                 elif kind == 'int':
-                    if value == INT_SENTINAL:
-                        out.write('!')
-                    else:
-                        out.write(str(value))
+                    out.write('!' if value == INT_SENTINAL else str(value))
                 elif kind == 'real':
                     if math.isclose(value, REAL_SENTINAL):
                         out.write('!')
