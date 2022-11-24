@@ -5,6 +5,9 @@
 '''
 A library supporting Tdb “Text DataBase” format.
 
+Tdb “Text DataBase” format is a plain text human readable typed database
+storage format.
+
 Tdb provides a superior alternative to CSV. In particular, Tdb tables are
 named and Tdb fields are strictly typed. Also, there is a clear distinction
 between field names and data values, and strings respect whitespace
@@ -20,6 +23,8 @@ import pathlib
 from xml.sax.saxutils import escape, unescape
 
 import editabletuple
+
+__version__ = '0.5.0'
 
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
