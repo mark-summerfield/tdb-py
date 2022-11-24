@@ -331,7 +331,7 @@ def _write_tdb(out, tables, decimals):
             for column, value in enumerate(record):
                 out.write(sep)
                 sep = ' '
-                kind = table.fields_meta[column]
+                kind = table.fields_meta[column].kind
                 if kind == 'bool':
                     out.write('T' if value else 'F')
                 elif kind == 'bytes':
@@ -345,8 +345,9 @@ def _write_tdb(out, tables, decimals):
                 elif kind == 'real':
                     pass # TODO
                 else: # str
-                    pass # TODO
+                    out.write(f'<{escape(value)}>')
             out.write('\n')
+        out.write('\n]\n')
 
 
 class MetaField:
