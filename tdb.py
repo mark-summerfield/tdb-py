@@ -213,9 +213,7 @@ def _advance(text, column):
 
 
 def _handle_sentinel(kind, record, column, lino):
-    if kind in {'bool', 'bytes', 'str'}:
-        raise Error(f'{lino}#{kind} fields don\'t allow sentinals')
-    elif kind == 'date':
+    if kind == 'date':
         record[column] = DATE_SENTINAL
     elif kind == 'datetime':
         record[column] = DATETIME_SENTINAL
@@ -223,6 +221,8 @@ def _handle_sentinel(kind, record, column, lino):
         record[column] = INT_SENTINAL
     elif kind == 'real':
         record[column] = REAL_SENTINAL
+    else:
+        raise Error(f'{lino}#{kind} fields don\'t allow sentinals')
 
 
 def _handle_bool(kind, value, record, column, lino):
@@ -244,7 +244,7 @@ def _handle_str(kind, text, record, column, lino):
         raise Error(f'{lino}#expected type {kind}, got a str')
     found, text, lino = _find(text, '>', 'expected to find ">"', lino)
     record[column] = unescape(found)
-    return text, lino # skip )
+    return text, lino # skip >
 
 
 def _handle_int(text, record, column, lino):
