@@ -15,7 +15,9 @@ setuptools.setup(
     version=VERSION,
     author='Mark Summerfield',
     author_email='mark@qtrac.eu',
-    description='A pure Python library supporting Tdb “Text DataBase” format, a plain text human readable typed database storage format superior to CSV.',
+    description='A pure Python library supporting Tdb “Text DataBase” ' +
+    'format, a plain text human readable typed database storage format ' +
+    'superior to CSV.',
     long_description=README,
     long_description_content_type='text/markdown',
     url='https://github.com/mark-summerfield/tdb-py',
