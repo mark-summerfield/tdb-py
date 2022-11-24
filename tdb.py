@@ -341,7 +341,7 @@ def _write_tdb(out, tables, decimals):
                 elif kind == 'datetime':
                     pass # TODO
                 elif kind == 'int':
-                    pass # TODO
+                    out.write(str(value))
                 elif kind == 'real':
                     pass # TODO
                 else: # str
