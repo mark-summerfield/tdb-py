@@ -26,11 +26,39 @@ class TestTdb(unittest.TestCase):
                 db = tdb.load(filename)
                 actual = db.dumps()
                 if expected != actual:
-                    expected = strip0s(expected)
-                    actual = strip0s(actual)
-                    if expected != actual:
-                        show(expected, actual)
+                    expected, actual = maybe_sanitize(expected, actual)
                 self.assertEqual(expected, actual)
+                db = tdb.loads(expected)
+                actual = db.dumps()
+                if expected != actual:
+                    expected, actual = maybe_sanitize(expected, actual)
+                self.assertEqual(expected, actual)
+
+
+    def test_e100(self):
+        with self.assertRaises(tdb.Error) as ctx:
+            tdb.loads('[T A bool\n%\n-3]')
+        err = ctx.exception
+        m = re.search(r'^E(\d\d\d)#', str(err))
+        self.assertTrue(m is not None and m.group(1) == '100')
+
+
+    def test_e110(self):
+        with self.assertRaises(tdb.Error) as ctx:
+            tdb.loads('[T A bool\n%\n0]')
+        err = ctx.exception
+        m = re.search(r'^E(\d\d\d)#', str(err))
+        self.assertTrue(m is not None and m.group(1) == '110')
+
+
+
+def maybe_sanitize(a, b):
+    if a != b:
+        a = strip0s(a)
+        b = strip0s(b)
+        if a != b:
+            show(a, b)
+    return a, b
 
 
 def strip0s(text):

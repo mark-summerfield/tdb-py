@@ -1,5 +1,5 @@
 tdb.py
-test_tdb.py
+test_tdb.py # TODO complete error tests
 
 README.md
 
@@ -9,5 +9,3 @@ setup.py
 pypi.sh
 
 # TODO tdb.py [-d|--decimals N] <infile.tdb> [outfile.tdb]
-# TODO test_tdb.py
-# TODO setup.py for pypi

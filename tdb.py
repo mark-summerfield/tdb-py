@@ -187,7 +187,7 @@ def _read_records(text, table, lino):
             elif kind == 'real':
                 text, lino = _handle_real(text, record, column, lino)
             else:
-                raise Error(f'{lino}#expected an {kind}')
+                raise Error(f'E100#{lino}:expected an {kind}')
             column += 1
         elif c in '0123456789':
             if kind == 'int':
@@ -199,15 +199,15 @@ def _read_records(text, table, lino):
             elif kind == 'datetime':
                 text, lino = _handle_datetime(text, record, column, lino)
             else:
-                raise Error(f'{lino}#expected an {kind}')
+                raise Error(f'E110#{lino}:expected an {kind}')
             column += 1
         elif c == ']': # end of table
             if 0 < column < columns:
-                raise Error(f'{lino}#incomplete record {column + 1}/'
+                raise Error(f'E120#{lino}:incomplete record {column + 1}/'
                             f'{columns} fields')
             return _skip_ws(text[1:], lino)
         else:
-            raise Error(f'{lino}#invalid character {c!r}')
+            raise Error(f'E130#{lino}:invalid character {c!r}')
         if column == columns:
             table.append(record)
             record = None
@@ -222,18 +222,19 @@ def _handle_sentinal(field_meta, record, column, lino):
     sentinal = field_meta.sentinal
     if sentinal is not None:
         return sentinal
-    raise Error(f'{lino}#{field_meta.kind} fields don\'t allow sentinals')
+    raise Error(
+        f'E140#{lino}:{field_meta.kind} fields don\'t allow sentinals')
 
 
 def _handle_bool(kind, value, record, column, lino):
     if kind != 'bool':
-        raise Error(f'{lino}#expected type {kind}, got a bool')
+        raise Error(f'E150#{lino}:expected type {kind}, got a bool')
     record[column] = value
 
 
 def _handle_bytes(kind, text, record, column, lino):
     if kind != 'bytes':
-        raise Error(f'{lino}#expected type {kind}, got a bytes')
+        raise Error(f'E160#{lino}:expected type {kind}, got a bytes')
     found, text, lino = _find(text, ')', 'expected to find ")"', lino)
     record[column] = bytes.fromhex(found)
     return text, lino # skip )
@@ -241,7 +242,7 @@ def _handle_bytes(kind, text, record, column, lino):
 
 def _handle_str(kind, text, record, column, lino):
     if kind != 'str':
-        raise Error(f'{lino}#expected type {kind}, got a str')
+        raise Error(f'E170#{lino}:expected type {kind}, got a str')
     found, text, lino = _find(text, '>', 'expected to find ">"', lino)
     record[column] = unescape(found)
     return text, lino # skip >
@@ -253,7 +254,7 @@ def _handle_int(text, record, column, lino):
         record[column] = int(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid int: {found!r}: {err}')
+        raise Error(f'E180#{lino}:invalid int: {found!r}: {err}')
 
 
 def _handle_real(text, record, column, lino):
@@ -262,7 +263,7 @@ def _handle_real(text, record, column, lino):
         record[column] = float(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid real: {found!r}: {err}')
+        raise Error(f'E190#{lino}:invalid real: {found!r}: {err}')
 
 
 def _handle_date(text, record, column, lino):
@@ -271,7 +272,7 @@ def _handle_date(text, record, column, lino):
         record[column] = datetime.date.fromisoformat(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid date: {found!r}: {err}')
+        raise Error(f'E200#{lino}:invalid date: {found!r}: {err}')
 
 
 def _handle_datetime(text, record, column, lino):
@@ -280,7 +281,7 @@ def _handle_datetime(text, record, column, lino):
         record[column] = datetime.datetime.fromisoformat(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid datetime: {found!r}: {err}')
+        raise Error(f'E210#{lino}:invalid datetime: {found!r}: {err}')
 
 
 def _scan(text, valid, lino):
@@ -291,7 +292,7 @@ def _scan(text, valid, lino):
         if c not in valid:
             return text[end:], text[:end], lino
         end += 1
-    raise Error(f'{lino}#unexpected end of data')
+    raise Error(f'E220#{lino}:unexpected end of data')
 
 
 def _skip_ws(text, lino):
@@ -310,7 +311,7 @@ def _skip_ws(text, lino):
 def _find(text, what, message, lino):
     end = text.find(what)
     if end == -1:
-        raise Error(f'{lino}#{message}')
+        raise Error(f'E230#{lino}:{message}')
     lino += text[:end].count('\n')
     return text[:end], text[end + 1:], lino
 
