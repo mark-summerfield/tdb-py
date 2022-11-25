@@ -94,7 +94,7 @@ class Tdb:
         '''Writes this Tdb's tables to a string which is then returned.'''
         out = io.StringIO()
         try:
-            self.dump(out, decimals)
+            self.dump(out, decimals=decimals)
             return out.getvalue()
         finally:
             out.close()
