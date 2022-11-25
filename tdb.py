@@ -24,7 +24,7 @@ from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-__version__ = '0.5.1'
+__version__ = '0.6.0'
 
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
@@ -158,7 +158,8 @@ def _read_records(text, table, lino):
             old_column = -1
             column = 0
         if column != old_column:
-            kind = table.fields_meta[column].kind
+            field_meta = table.fields_meta[column]
+            kind = field_meta.kind
         c = text[0]
         if c == '\n': # ignore whitespace
             text = text[1:]
@@ -166,7 +167,7 @@ def _read_records(text, table, lino):
         elif c in ' \t\r': # ignore whitespace
             text = text[1:]
         elif c == '!':
-            _handle_sentinel(kind, record, column, lino)
+            _handle_sentinal(field_meta, record, column, lino)
             text, column = _advance(text, column)
         elif c in 'FfNn':
             _handle_bool(kind, False, record, column, lino)
@@ -217,17 +218,11 @@ def _advance(text, column):
     return text[1:], column + 1
 
 
-def _handle_sentinel(kind, record, column, lino):
-    if kind == 'date':
-        record[column] = DATE_SENTINAL
-    elif kind == 'datetime':
-        record[column] = DATETIME_SENTINAL
-    elif kind == 'int':
-        record[column] = INT_SENTINAL
-    elif kind == 'real':
-        record[column] = REAL_SENTINAL
-    else:
-        raise Error(f'{lino}#{kind} fields don\'t allow sentinals')
+def _handle_sentinal(field_meta, record, column, lino):
+    sentinal = field_meta.sentinal
+    if sentinal is not None:
+        return sentinal
+    raise Error(f'{lino}#{field_meta.kind} fields don\'t allow sentinals')
 
 
 def _handle_bool(kind, value, record, column, lino):
@@ -364,6 +359,29 @@ class MetaField:
         self.kind = kind
 
 
+    @property
+    def default(self):
+        if self.kind == 'bool':
+            return False
+        if self.kind == 'bytes':
+            return b''
+        if self.kind == 'str':
+            return ''
+        return self.sentinal
+
+
+    @property
+    def sentinal(self):
+        if self.kind == 'date':
+            return DATE_SENTINAL
+        if self.kind == 'datetime':
+            return DATETIME_SENTINAL
+        if self.kind == 'int':
+            return INT_SENTINAL
+        if self.kind == 'real':
+            return REAL_SENTINAL
+
+
     def __repr__(self):
         return f'{self.__class__.__name__}({self.name!r}, {self.kind!r})'
 
@@ -381,7 +399,8 @@ class Table:
     def RecordClass(self):
         if self._RecordClass is None:
             self._RecordClass = editabletuple.editabletuple(
-                self.name, *[field.name for field in self.fields_meta])
+                self.name, *[field.name for field in self.fields_meta],
+                defaults=[field.default for field in self.fields_meta])
         return self._RecordClass
 
 
