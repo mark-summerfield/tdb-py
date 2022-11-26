@@ -1,9 +1,11 @@
+# TODO complete error tests
+
 tdb.py
+test_tdb.py
 
 README.md
 
 st.sh
 
-# TODO tdb.py [-d|--decimals N] <infile.tdb> [outfile.tdb]
-# TODO test_tdb.py
-# TODO setup.py for pypi
+setup.py
+pypi.sh

@@ -44,3 +44,5 @@ dub.selections.json
 zig-cache
 dist/
 build/
+*.egg-info
+pypi.sh

@@ -1,7 +1,13 @@
 # Tdb Overview
 
-Text database (Tdb) is a plain text human readable typed database storage
-format.
+Tdb “Text DataBase” format is a plain text human readable typed database
+storage format.
+
+Tdb provides a superior alternative to CSV. In particular, Tdb tables are
+named and Tdb fields are strictly typed. Also, there is a clear distinction
+between field names and data values, and strings respect whitespace
+(including newlines) and have no problems with commas, quotes, etc.
+Perhaps best of all, a single Tdb file may contain one—or more—tables.
 
 - [Datatypes](#datatypes)
 - [Examples](#examples)
@@ -23,14 +29,13 @@ Tdb supports the following seven built-in datatypes.
 
 |**Type**<a name="table-of-built-in-types"></a>|**Sentinal**|**Example(s)**|**Notes**|
 |-----------|----------------------|--|--|
-|`bool`     ||`F` `T`|No sentinal. A Tdb reader should also accept 'f', 'N', 'n', 't', 'Y', 'y'|
+|`bool`     ||`F` `T`|No sentinal. A Tdb reader should also accept 'f', 'N', 'n', 't', 'Y', 'y', '0', '1'|
 |`bytes`    ||`(20AC 65 66 48)`|No sentinal; use `()` empty. There must be an even number of case-insensitive hex digits; whitespace (spaces, newlines, etc.) optional.|
 |`date`     |`1808-08-08`   |`2022-04-01`|Basic ISO8601 YYYY-MM-DD format.|
 |`datetime` |`1808-08-08T08:08:08`|`2022-04-01T16:11:51`|ISO8601 YYYY-MM-DDTHH[:MM[:SS]] format; 1-sec resolution no timezone support.|
 |`int`      |`-1808080808`|`-192` `+234` `7891409`|Standard integers with optional sign.|
 |`real`     |`-1808080808.0808`|`0.15` `0.7e-9` `2245.389`|Standard and scientific notation.|
-|`str`      ||`<Some text which may include newlines>`|No sentinal; use `<>`
-empty. For &, <, >, use \&amp;, \&lt;, \&gt; respectively.|
+|`str`      ||`<Some text which may include newlines>`|No sentinal; use `<>` empty. For &, <, >, use \&amp;, \&lt;, \&gt; respectively.|
 
 All fields are _not null_ and must contain a valid value of the field's
 type. For `date`, `datetime`, `int`, and `real` fields there is a sentinal
@@ -165,7 +170,7 @@ A Tdb file consists of one or more tables.
     TYPE        ::= 'bool' | 'bytes' | 'date' | 'datetime' | 'int' | 'real' | 'str'
     RECORD      ::= OWS FIELD (RWS FIELD)*
     FIELD       ::= BOOL | BYTES | DATE | DATETIME | INT | REAL | STR
-    BOOL        ::= /[FfTtYyNn]/
+    BOOL        ::= /[FfTtYyNn01]/
     BYTES       ::= '(' (OWS [A-Fa-f0-9]{2})* OWS ')'
     DATE        ::= /\d\d\d\d-\d\d-\d\d/ | SENTINAL # basic ISO8601 YYYY-MM-DD format
     DATETIME    ::= /\d\d\d\d-\d\d-\d\dT\d\d(\d\d(\d\d)?)?/ | SENTINAL
@@ -186,8 +191,8 @@ _Notes_
 - A Tdb file _must_ contain at least one table even if it is empty, i.e.,
   has no records.
 - A Tdb writer should always write ``bool``s as `F` or `T`; but a Tdb reader
-  should accept any of `F`, `f`, `N`, `n`, for false, and any of `T`,
-  `t`, `Y`, `y`, for true.
+  should accept any of `F`, `f`, `N`, `n`, `0`, for false, and any of `T`,
+  `t`, `Y`, `y`, `1`, for true.
 - Within any `.tdb` file each tablename must be unique, and within each
   table each fieldname must be unique.
 - No tablename or fieldname (i.e., no identifier) may be the same as a

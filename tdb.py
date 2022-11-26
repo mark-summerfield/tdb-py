@@ -5,6 +5,9 @@
 '''
 A library supporting Tdb “Text DataBase” format.
 
+Tdb “Text DataBase” format is a plain text human readable typed database
+storage format.
+
 Tdb provides a superior alternative to CSV. In particular, Tdb tables are
 named and Tdb fields are strictly typed. Also, there is a clear distinction
 between field names and data values, and strings respect whitespace
@@ -20,6 +23,8 @@ import pathlib
 from xml.sax.saxutils import escape, unescape
 
 import editabletuple
+
+__version__ = '0.7.0'
 
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
@@ -89,7 +94,7 @@ class Tdb:
         '''Writes this Tdb's tables to a string which is then returned.'''
         out = io.StringIO()
         try:
-            self.dump(out, decimals)
+            self.dump(out, decimals=decimals)
             return out.getvalue()
         finally:
             out.close()
@@ -153,7 +158,8 @@ def _read_records(text, table, lino):
             old_column = -1
             column = 0
         if column != old_column:
-            kind = table.fields_meta[column].kind
+            field_meta = table.fields_meta[column]
+            kind = field_meta.kind
         c = text[0]
         if c == '\n': # ignore whitespace
             text = text[1:]
@@ -161,7 +167,7 @@ def _read_records(text, table, lino):
         elif c in ' \t\r': # ignore whitespace
             text = text[1:]
         elif c == '!':
-            _handle_sentinel(kind, record, column, lino)
+            _handle_sentinal(field_meta, record, column, lino)
             text, column = _advance(text, column)
         elif c in 'FfNn':
             _handle_bool(kind, False, record, column, lino)
@@ -181,10 +187,18 @@ def _read_records(text, table, lino):
             elif kind == 'real':
                 text, lino = _handle_real(text, record, column, lino)
             else:
-                raise Error(f'{lino}#expected an {kind}')
+                raise Error(f'E100#{lino}:expected an {kind}')
             column += 1
         elif c in '0123456789':
-            if kind == 'int':
+            if kind == 'bool':
+                if (c in '01' and len(text) > 1 and
+                        text[1] not in '.eE0123456789'):
+                    _handle_bool(kind, c == '1', record, column, lino)
+                    text = text[1:]
+                else:
+                    raise Error(
+                        f'E105#{lino}:got {text[:2]} expected a {kind}')
+            elif kind == 'int':
                 text, lino = _handle_int(text, record, column, lino)
             elif kind == 'real':
                 text, lino = _handle_real(text, record, column, lino)
@@ -193,15 +207,15 @@ def _read_records(text, table, lino):
             elif kind == 'datetime':
                 text, lino = _handle_datetime(text, record, column, lino)
             else:
-                raise Error(f'{lino}#expected an {kind}')
+                raise Error(f'E110#{lino}:expected an {kind}')
             column += 1
         elif c == ']': # end of table
             if 0 < column < columns:
-                raise Error(f'{lino}#incomplete record {column + 1}/'
+                raise Error(f'E120#{lino}:incomplete record {column + 1}/'
                             f'{columns} fields')
             return _skip_ws(text[1:], lino)
         else:
-            raise Error(f'{lino}#invalid character {c!r}')
+            raise Error(f'E130#{lino}:invalid character {c!r}')
         if column == columns:
             table.append(record)
             record = None
@@ -212,28 +226,23 @@ def _advance(text, column):
     return text[1:], column + 1
 
 
-def _handle_sentinel(kind, record, column, lino):
-    if kind == 'date':
-        record[column] = DATE_SENTINAL
-    elif kind == 'datetime':
-        record[column] = DATETIME_SENTINAL
-    elif kind == 'int':
-        record[column] = INT_SENTINAL
-    elif kind == 'real':
-        record[column] = REAL_SENTINAL
-    else:
-        raise Error(f'{lino}#{kind} fields don\'t allow sentinals')
+def _handle_sentinal(field_meta, record, column, lino):
+    sentinal = field_meta.sentinal
+    if sentinal is not None:
+        return sentinal
+    raise Error(
+        f'E140#{lino}:{field_meta.kind} fields don\'t allow sentinals')
 
 
 def _handle_bool(kind, value, record, column, lino):
     if kind != 'bool':
-        raise Error(f'{lino}#expected type {kind}, got a bool')
+        raise Error(f'E150#{lino}:expected type {kind}, got a bool')
     record[column] = value
 
 
 def _handle_bytes(kind, text, record, column, lino):
     if kind != 'bytes':
-        raise Error(f'{lino}#expected type {kind}, got a bytes')
+        raise Error(f'E160#{lino}:expected type {kind}, got a bytes')
     found, text, lino = _find(text, ')', 'expected to find ")"', lino)
     record[column] = bytes.fromhex(found)
     return text, lino # skip )
@@ -241,7 +250,7 @@ def _handle_bytes(kind, text, record, column, lino):
 
 def _handle_str(kind, text, record, column, lino):
     if kind != 'str':
-        raise Error(f'{lino}#expected type {kind}, got a str')
+        raise Error(f'E170#{lino}:expected type {kind}, got a str')
     found, text, lino = _find(text, '>', 'expected to find ">"', lino)
     record[column] = unescape(found)
     return text, lino # skip >
@@ -253,7 +262,7 @@ def _handle_int(text, record, column, lino):
         record[column] = int(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid int: {found!r}: {err}')
+        raise Error(f'E180#{lino}:invalid int: {found!r}: {err}')
 
 
 def _handle_real(text, record, column, lino):
@@ -262,7 +271,7 @@ def _handle_real(text, record, column, lino):
         record[column] = float(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid real: {found!r}: {err}')
+        raise Error(f'E190#{lino}:invalid real: {found!r}: {err}')
 
 
 def _handle_date(text, record, column, lino):
@@ -271,7 +280,7 @@ def _handle_date(text, record, column, lino):
         record[column] = datetime.date.fromisoformat(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid date: {found!r}: {err}')
+        raise Error(f'E200#{lino}:invalid date: {found!r}: {err}')
 
 
 def _handle_datetime(text, record, column, lino):
@@ -280,7 +289,7 @@ def _handle_datetime(text, record, column, lino):
         record[column] = datetime.datetime.fromisoformat(found)
         return text, lino
     except ValueError as err:
-        raise Error(f'{lino}#invalid datetime: {found!r}: {err}')
+        raise Error(f'E210#{lino}:invalid datetime: {found!r}: {err}')
 
 
 def _scan(text, valid, lino):
@@ -291,7 +300,7 @@ def _scan(text, valid, lino):
         if c not in valid:
             return text[end:], text[:end], lino
         end += 1
-    raise Error(f'{lino}#unexpected end of data')
+    raise Error(f'E220#{lino}:unexpected end of data')
 
 
 def _skip_ws(text, lino):
@@ -310,7 +319,7 @@ def _skip_ws(text, lino):
 def _find(text, what, message, lino):
     end = text.find(what)
     if end == -1:
-        raise Error(f'{lino}#{message}')
+        raise Error(f'E230#{lino}:{message}')
     lino += text[:end].count('\n')
     return text[:end], text[end + 1:], lino
 
@@ -332,20 +341,13 @@ def _write_tdb(out, tables, decimals):
                 elif kind == 'bytes':
                     out.write(f'({value.hex()})')
                 elif kind == 'date':
-                    if value == DATE_SENTINAL:
-                        out.write('!')
-                    else:
-                        out.write(value.isoformat())
+                    out.write('!' if value == DATE_SENTINAL else
+                              value.isoformat())
                 elif kind == 'datetime':
-                    if value == DATETIME_SENTINAL:
-                        out.write('!')
-                    else:
-                        out.write(value.isoformat()[:19])
+                    out.write('!' if value == DATETIME_SENTINAL else
+                              value.isoformat()[:19])
                 elif kind == 'int':
-                    if value == INT_SENTINAL:
-                        out.write('!')
-                    else:
-                        out.write(str(value))
+                    out.write('!' if value == INT_SENTINAL else str(value))
                 elif kind == 'real':
                     if math.isclose(value, REAL_SENTINAL):
                         out.write('!')
@@ -366,6 +368,29 @@ class MetaField:
         self.kind = kind
 
 
+    @property
+    def default(self):
+        if self.kind == 'bool':
+            return False
+        if self.kind == 'bytes':
+            return b''
+        if self.kind == 'str':
+            return ''
+        return self.sentinal
+
+
+    @property
+    def sentinal(self):
+        if self.kind == 'date':
+            return DATE_SENTINAL
+        if self.kind == 'datetime':
+            return DATETIME_SENTINAL
+        if self.kind == 'int':
+            return INT_SENTINAL
+        if self.kind == 'real':
+            return REAL_SENTINAL
+
+
     def __repr__(self):
         return f'{self.__class__.__name__}({self.name!r}, {self.kind!r})'
 
@@ -383,7 +408,8 @@ class Table:
     def RecordClass(self):
         if self._RecordClass is None:
             self._RecordClass = editabletuple.editabletuple(
-                self.name, *[field.name for field in self.fields_meta])
+                self.name, *[field.name for field in self.fields_meta],
+                defaults=[field.default for field in self.fields_meta])
         return self._RecordClass
 
 
@@ -408,8 +434,38 @@ class Error(Exception):
 if __name__ == '__main__':
     import sys
     if len(sys.argv) == 1 or sys.argv[1] in {'-h', '--help'}:
-        raise SystemExit('usage: tdb.py <infile.tdb> [outfile.tdb]')
-    infile = sys.argv[1]
-    outfile = '-' if len(sys.argv) == 2 else sys.argv[2]
+        raise SystemExit('''\
+usage: tdb.py [-d|--decimals N] <infile.tdb> [outfile.tdb]
+
+-d, --decimals N  0-19; default 0 (use fewest); 1-19 use exactly
+
+Output is to stdout if there's no outfile or outfile is -.
+''')
+    decimals = -1
+    want_decimals = False
+    infile = None
+    outfile = '-'
+    for arg in sys.argv[1:]:
+        if want_decimals:
+            decimals = int(arg)
+            want_decimals = False
+        elif arg in {'-d', '--decimals'}:
+            want_decimals = True
+        elif arg.startswith('-d'):
+            arg = arg[2:]
+            if arg.startswith('='):
+                arg = arg[1:]
+            decimals = int(arg)
+        elif arg.startswith('--decimals'):
+            arg = arg[10:]
+            if arg.startswith('='):
+                arg = arg[1:]
+            decimals = int(arg)
+        elif infile is None:
+            infile = arg
+        else:
+            outfile = arg
+    if not (1 <= decimals <= 19):
+        decimals = -1
     db = load(infile)
-    db.dump(outfile)
+    db.dump(outfile, decimals=decimals)
