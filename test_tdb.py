@@ -18,7 +18,7 @@ class TestTdb(unittest.TestCase):
                                        'incidents')]
 
 
-    def test01(self):
+    def test_01(self):
         for i, filename in enumerate(self.filenames, 1):
             with self.subTest(i=i):
                 with open(filename, 'rt', encoding='utf-8') as file:
@@ -35,6 +35,16 @@ class TestTdb(unittest.TestCase):
                 self.assertEqual(expected, actual)
 
 
+    def test_02(self):
+        data = '[Recs Ok bool\n%\nT f y N 1 0]'
+        expected = '[Recs Ok bool\n%\nT\nF\nT\nF\nT\nF\n]'
+        db = tdb.loads(data)
+        actual = db.dumps()
+        if expected != actual:
+            expected, actual = maybe_sanitize(expected, actual)
+        self.assertEqual(expected, actual)
+
+
     def test_e100(self):
         with self.assertRaises(tdb.Error) as ctx:
             tdb.loads('[T A bool\n%\n-3]')
@@ -43,19 +53,19 @@ class TestTdb(unittest.TestCase):
         self.assertTrue(m is not None and m.group(1) == '100')
 
 
-    def test_e110(self):
+    def test_e105(self):
         with self.assertRaises(tdb.Error) as ctx:
-            tdb.loads('[T A bool\n%\n0]')
+            tdb.loads('[T A bool\n%\n2]')
         err = ctx.exception
         m = re.search(r'^E(\d\d\d)#', str(err))
-        self.assertTrue(m is not None and m.group(1) == '110')
+        self.assertTrue(m is not None and m.group(1) == '105')
 
 
 
 def maybe_sanitize(a, b):
     if a != b:
-        a = strip0s(a)
-        b = strip0s(b)
+        a = strip0s(a).strip()
+        b = strip0s(b).strip()
         if a != b:
             show(a, b)
     return a, b

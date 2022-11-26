@@ -24,7 +24,7 @@ from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-__version__ = '0.6.0'
+__version__ = '0.7.0'
 
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
@@ -190,7 +190,15 @@ def _read_records(text, table, lino):
                 raise Error(f'E100#{lino}:expected an {kind}')
             column += 1
         elif c in '0123456789':
-            if kind == 'int':
+            if kind == 'bool':
+                if (c in '01' and len(text) > 1 and
+                        text[1] not in '.eE0123456789'):
+                    _handle_bool(kind, c == '1', record, column, lino)
+                    text = text[1:]
+                else:
+                    raise Error(
+                        f'E105#{lino}:got {text[:2]} expected a {kind}')
+            elif kind == 'int':
                 text, lino = _handle_int(text, record, column, lino)
             elif kind == 'real':
                 text, lino = _handle_real(text, record, column, lino)
@@ -426,8 +434,38 @@ class Error(Exception):
 if __name__ == '__main__':
     import sys
     if len(sys.argv) == 1 or sys.argv[1] in {'-h', '--help'}:
-        raise SystemExit('usage: tdb.py <infile.tdb> [outfile.tdb]')
-    infile = sys.argv[1]
-    outfile = '-' if len(sys.argv) == 2 else sys.argv[2]
+        raise SystemExit('''\
+usage: tdb.py [-d|--decimals N] <infile.tdb> [outfile.tdb]
+
+-d, --decimals N  0-19; default 0 (use fewest); 1-19 use exactly
+
+Output is to stdout if there's no outfile or outfile is -.
+''')
+    decimals = -1
+    want_decimals = False
+    infile = None
+    outfile = '-'
+    for arg in sys.argv[1:]:
+        if want_decimals:
+            decimals = int(arg)
+            want_decimals = False
+        elif arg in {'-d', '--decimals'}:
+            want_decimals = True
+        elif arg.startswith('-d'):
+            arg = arg[2:]
+            if arg.startswith('='):
+                arg = arg[1:]
+            decimals = int(arg)
+        elif arg.startswith('--decimals'):
+            arg = arg[10:]
+            if arg.startswith('='):
+                arg = arg[1:]
+            decimals = int(arg)
+        elif infile is None:
+            infile = arg
+        else:
+            outfile = arg
+    if not (1 <= decimals <= 19):
+        decimals = -1
     db = load(infile)
-    db.dump(outfile)
+    db.dump(outfile, decimals=decimals)

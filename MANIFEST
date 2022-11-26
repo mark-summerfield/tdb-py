@@ -1,4 +1,3 @@
-# TODO tdb.py [-d|--decimals N] <infile.tdb> [outfile.tdb]
 # TODO complete error tests
 
 tdb.py

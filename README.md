@@ -29,7 +29,7 @@ Tdb supports the following seven built-in datatypes.
 
 |**Type**<a name="table-of-built-in-types"></a>|**Sentinal**|**Example(s)**|**Notes**|
 |-----------|----------------------|--|--|
-|`bool`     ||`F` `T`|No sentinal. A Tdb reader should also accept 'f', 'N', 'n', 't', 'Y', 'y'|
+|`bool`     ||`F` `T`|No sentinal. A Tdb reader should also accept 'f', 'N', 'n', 't', 'Y', 'y', '0', '1'|
 |`bytes`    ||`(20AC 65 66 48)`|No sentinal; use `()` empty. There must be an even number of case-insensitive hex digits; whitespace (spaces, newlines, etc.) optional.|
 |`date`     |`1808-08-08`   |`2022-04-01`|Basic ISO8601 YYYY-MM-DD format.|
 |`datetime` |`1808-08-08T08:08:08`|`2022-04-01T16:11:51`|ISO8601 YYYY-MM-DDTHH[:MM[:SS]] format; 1-sec resolution no timezone support.|
@@ -170,7 +170,7 @@ A Tdb file consists of one or more tables.
     TYPE        ::= 'bool' | 'bytes' | 'date' | 'datetime' | 'int' | 'real' | 'str'
     RECORD      ::= OWS FIELD (RWS FIELD)*
     FIELD       ::= BOOL | BYTES | DATE | DATETIME | INT | REAL | STR
-    BOOL        ::= /[FfTtYyNn]/
+    BOOL        ::= /[FfTtYyNn01]/
     BYTES       ::= '(' (OWS [A-Fa-f0-9]{2})* OWS ')'
     DATE        ::= /\d\d\d\d-\d\d-\d\d/ | SENTINAL # basic ISO8601 YYYY-MM-DD format
     DATETIME    ::= /\d\d\d\d-\d\d-\d\dT\d\d(\d\d(\d\d)?)?/ | SENTINAL
@@ -191,8 +191,8 @@ _Notes_
 - A Tdb file _must_ contain at least one table even if it is empty, i.e.,
   has no records.
 - A Tdb writer should always write ``bool``s as `F` or `T`; but a Tdb reader
-  should accept any of `F`, `f`, `N`, `n`, for false, and any of `T`,
-  `t`, `Y`, `y`, for true.
+  should accept any of `F`, `f`, `N`, `n`, `0`, for false, and any of `T`,
+  `t`, `Y`, `y`, `1`, for true.
 - Within any `.tdb` file each tablename must be unique, and within each
   table each fieldname must be unique.
 - No tablename or fieldname (i.e., no identifier) may be the same as a
