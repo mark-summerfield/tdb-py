@@ -45,6 +45,15 @@ class TestTdb(unittest.TestCase):
         self.assertEqual(expected, actual)
 
 
+    def test_03(self):
+        expected = '[Records AField int\n%\n2\n3\n5\n]\n'
+        db = tdb.loads(expected)
+        actual = db.dumps()
+        if expected != actual:
+            expected, actual = maybe_sanitize(expected, actual)
+        self.assertEqual(expected, actual)
+
+
     def test_e100(self):
         with self.assertRaises(tdb.Error) as ctx:
             tdb.loads('[T A bool\n%\n-3]')
