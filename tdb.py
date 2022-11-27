@@ -35,7 +35,7 @@ REAL_SENTINAL = -1808080808.0808
 class Tdb:
 
     def __init__(self):
-        self.tables = {}
+        self.tables = {} # keys are tablenames, values are Tables
 
 
     def load(self, filename_or_filelike):
