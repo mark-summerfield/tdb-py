@@ -24,7 +24,7 @@ from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-__version__ = '0.7.0'
+__version__ = '0.7.1'
 
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
@@ -187,7 +187,7 @@ def _read_records(text, table, lino):
             elif kind == 'real':
                 text, lino = _handle_real(text, record, column, lino)
             else:
-                raise Error(f'E100#{lino}:expected an {kind}')
+                raise Error(f'E100#{lino}:expected {kind}')
             column += 1
         elif c in '0123456789':
             if kind == 'bool':
