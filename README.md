@@ -15,9 +15,7 @@ Perhaps best of all, a single Tdb file may contain one—or more—tables.
     - [Database](#database)
     - [Minimal Tdb Files](#minimal-tdb-files)
     - [Metadata](#metadata)
-- [Libraries](#libraries)
-	- [Go](#go)
-	- [Python](#py)
+- [Libraries](#libraries) (Go, Python, Rust)
 - [BNF](#bnf)
 - [Supplementary](#supplementary)
     - [Vim Support](#vim-support)
@@ -151,10 +149,11 @@ store this data and add it to the Tdb.
 
 ## Libraries
 
-|**Library**|**Language**|**Notes**                    |
+|**Library**|**Language**|**Homepage**                 |
 |-----------|------------|-----------------------------|
 |tdb-go|Go|https://pkg.go.dev/github.com/mark-summerfield/tdb-go|
-|tdb-py|Python|https://pkg.go.dev/github.com/mark-summerfield/tdb-py|
+|tdb-py|Python|https://pypi.org/project/tdb-py|
+|tdb-rs|Rust|https://crates.io/crates/tdb-rs|
 
 We will happily add links to implementations in other languages if they pass
 the tests. (Tdb is a relatively simple format to parse and write.) 

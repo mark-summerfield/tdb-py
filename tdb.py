@@ -24,7 +24,7 @@ from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-__version__ = '0.7.1'
+__version__ = '0.8.0'
 
 DATE_SENTINAL = datetime.date(1808, 8, 8)
 DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
