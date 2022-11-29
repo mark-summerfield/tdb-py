@@ -1,3 +1,5 @@
+# TODO drop sentinals
+# TODO support nullable fields in load(s) & dump(s)
 # TODO complete error tests
 
 tdb.py
