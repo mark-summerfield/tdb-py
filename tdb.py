@@ -18,18 +18,12 @@ Perhaps best of all, a single Tdb file may contain one—or more—tables.
 import datetime
 import gzip
 import io
-import math
 import pathlib
 from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-__version__ = '0.8.0'
-
-DATE_SENTINAL = datetime.date(1808, 8, 8)
-DATETIME_SENTINAL = datetime.datetime(1808, 8, 8, 8, 8, 8)
-INT_SENTINAL = -1808080808
-REAL_SENTINAL = -1808080808.0808
+__version__ = '0.9.0'
 
 
 class Tdb:
@@ -166,8 +160,8 @@ def _read_records(text, table, lino):
             lino += 1
         elif c in ' \t\r': # ignore whitespace
             text = text[1:]
-        elif c == '!':
-            _handle_sentinal(field_meta, record, column, lino)
+        elif c == '?':
+            _handle_null(field_meta, record, column, lino)
             text, column = _advance(text, column)
         elif c in 'FfNn':
             _handle_bool(kind, False, record, column, lino)
@@ -226,12 +220,10 @@ def _advance(text, column):
     return text[1:], column + 1
 
 
-def _handle_sentinal(field_meta, record, column, lino):
-    sentinal = field_meta.sentinal
-    if sentinal is not None:
-        return sentinal
-    raise Error(
-        f'E140#{lino}:{field_meta.kind} fields don\'t allow sentinals')
+def _handle_null(field_meta, record, column, lino):
+    if not field_meta.nullable:
+        raise Error(f'E140#{lino}:{field_meta.kind} isn\'t nullable')
+    record[column] = None
 
 
 def _handle_bool(kind, value, record, column, lino):
@@ -336,22 +328,24 @@ def _write_tdb(out, tables, decimals):
                 out.write(sep)
                 sep = ' '
                 kind = table.fields_meta[column].kind
-                if kind == 'bool':
+                if value is None:
+                    if table.fields_meta[column].nullable:
+                        out.write('?')
+                    else:
+                        raise Error(
+                            'E240:can\'t write null to not null field.')
+                elif kind == 'bool':
                     out.write('T' if value else 'F')
                 elif kind == 'bytes':
                     out.write(f'({value.hex()})')
                 elif kind == 'date':
-                    out.write('!' if value == DATE_SENTINAL else
-                              value.isoformat())
+                    out.write(value.isoformat())
                 elif kind == 'datetime':
-                    out.write('!' if value == DATETIME_SENTINAL else
-                              value.isoformat()[:19])
+                    out.write(value.isoformat()[:19])
                 elif kind == 'int':
-                    out.write('!' if value == INT_SENTINAL else str(value))
+                    out.write(str(value))
                 elif kind == 'real':
-                    if math.isclose(value, REAL_SENTINAL):
-                        out.write('!')
-                    elif decimals <= 0:
+                    if decimals <= 0:
                         out.write(f'{value:g}')
                     else:
                         out.write(f'{value:.{decimals}f}')
@@ -363,32 +357,10 @@ def _write_tdb(out, tables, decimals):
 
 class MetaField:
 
-    def __init__(self, name, kind):
+    def __init__(self, name, kind, nullable=False):
         self.name = name
         self.kind = kind
-
-
-    @property
-    def default(self):
-        if self.kind == 'bool':
-            return False
-        if self.kind == 'bytes':
-            return b''
-        if self.kind == 'str':
-            return ''
-        return self.sentinal
-
-
-    @property
-    def sentinal(self):
-        if self.kind == 'date':
-            return DATE_SENTINAL
-        if self.kind == 'datetime':
-            return DATETIME_SENTINAL
-        if self.kind == 'int':
-            return INT_SENTINAL
-        if self.kind == 'real':
-            return REAL_SENTINAL
+        self.nullable = nullable
 
 
     def __repr__(self):
@@ -408,8 +380,7 @@ class Table:
     def RecordClass(self):
         if self._RecordClass is None:
             self._RecordClass = editabletuple.editabletuple(
-                self.name, *[field.name for field in self.fields_meta],
-                defaults=[field.default for field in self.fields_meta])
+                self.name, *[field.name for field in self.fields_meta])
         return self._RecordClass
 
 
