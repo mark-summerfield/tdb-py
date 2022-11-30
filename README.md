@@ -25,8 +25,8 @@ Perhaps best of all, a single Tdb file may contain one—or more—tables.
 
 Tdb supports the following seven built-in datatypes.
 
-|**Type**<a name="table-of-built-in-types"></a>|**Example(s)**|**Notes**|
-|-----------|----------------------|--|--|
+|**Type**   |**Example(s)**        |**Notes**|
+|-----------|----------------------|---------|
 |`bool`     |`F`|A Tdb reader should also accept 'f', 'N', 'n', 't', 'Y', 'y', '0', '1'|
 |`bytes`    |`(20AC 65 66 48)`|There must be an even number of case-insensitive hex digits; whitespace (spaces, newlines, etc.) optional.|
 |`date`     |`2022-04-01`|Basic ISO8601 YYYY-MM-DD format.|
