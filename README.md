@@ -14,7 +14,7 @@ Perhaps best of all, a single Tdb file may contain one—or more—tables.
     - [CSV](#csv)
     - [Database](#database)
     - [Minimal Tdb Files](#minimal-tdb-files)
-    - [Metadata](#metadata)
+- [Timezones and Metadata](#timezones-and-metadata)
 - [Libraries](#libraries) (Go, Python, Rust)
 - [BNF](#bnf)
 - [Supplementary](#supplementary)
@@ -31,7 +31,7 @@ Tdb supports the following seven built-in datatypes.
 |`bytes`    |`(20AC 65 66 48)`|There must be an even number of case-insensitive hex digits; whitespace (spaces, newlines, etc.) optional.|
 |`date`     |`2022-04-01`|Basic ISO8601 YYYY-MM-DD format.|
 |`datetime` |`2022-04-01T16:11:51`|ISO8601 YYYY-MM-DDTHH[:MM[:SS]] format; 1-sec resolution no timezone support.|
-|`int`      |`-192` `234` `7891409`|Standard integers with optional `-` sign.|
+|`int`      |`-192` `234` `7891409`|Standard integers.|
 |`real`     |`0.15` `0.7e-9` `2245.389`|Standard and scientific notation.|
 |`str`      |`<Some text which may include newlines>`|For &, <, >, use \&amp;, \&lt;, \&gt; respectively.|
 
@@ -140,10 +140,32 @@ Again like the previous table, but now with two records, the first
 containing the value `0`, and the second containing null which is permitted
 since the field's type is nullable.
 
-### Metadata
+### Timezones and Metadata
+
+Tdb does not have direct timezone support. There are three simple solutions
+for this.
+
+If all the dates in the database are in the same timezone, then one approach
+is to store all the dates as UTC. Alternatively, add a tiny configuration
+table with the timezone data, for example:
+
+    [Config key str value str?
+    %
+    <timezone> <+02:30>
+    ]
+
+If, however, the dates being stored have varying timezones, then add another
+column specifically for the timezone. Something along these lines:
+
+    [Readings meter str reading real when date timezone str
+    %
+    <EX194B4> 1932.49 2024-11-17 <-03:00>
+    <V1938DX> 8492.1 2024-10-30 <+02:30>
+    ]
 
 If comments or metadata are required, simply create an additional table to
-store this data and add it to the Tdb.
+store this data and add it to the Tdb. For example, use a Config table as
+shown above.
 
 ## Libraries
 

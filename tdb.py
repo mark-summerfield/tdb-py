@@ -130,14 +130,19 @@ def _read_tdb(text):
 def _read_meta(text, lino):
     found, text, lino = _find(text, '%', 'expected to find "%"', lino)
     table = Table()
-    field_name = None
+    fieldname = None
     for i, part in enumerate(found.split()):
         if i == 0:
             table.name = part
         elif i % 2 != 0:
-            field_name = part
+            fieldname = part
         else:
-            table.fields_meta.append(MetaField(field_name, part))
+            null_allowed = False
+            if part.endswith('?'):
+                null_allowed = True
+                part = part[:-1]
+            table.fields_meta.append(MetaField(fieldname, part,
+                                               null_allowed=null_allowed))
     return text, table, lino + 1 # allow for %
 
 
@@ -221,8 +226,8 @@ def _advance(text, column):
 
 
 def _handle_null(field_meta, record, column, lino):
-    if not field_meta.nullable:
-        raise Error(f'E140#{lino}:{field_meta.kind} isn\'t nullable')
+    if not field_meta.null_allowed:
+        raise Error(E140.format(lino=lino, kind=field_meta.kind))
     record[column] = None
 
 
@@ -317,10 +322,12 @@ def _find(text, what, message, lino):
 
 
 def _write_tdb(out, tables, decimals):
-    for table_name, table in tables.items():
-        out.write(f'[{table_name}')
+    for tablename, table in tables.items():
+        out.write(f'[{tablename}')
         for meta in table.fields_meta:
             out.write(f' {meta.name} {meta.kind}')
+            if meta.null_allowed:
+                out.write('?')
         out.write('\n%\n')
         for record in table.records:
             sep = ''
@@ -329,11 +336,10 @@ def _write_tdb(out, tables, decimals):
                 sep = ' '
                 kind = table.fields_meta[column].kind
                 if value is None:
-                    if table.fields_meta[column].nullable:
+                    if table.fields_meta[column].null_allowed:
                         out.write('?')
                     else:
-                        raise Error(
-                            'E240:can\'t write null to not null field.')
+                        raise Error(E240.format(kind=kind))
                 elif kind == 'bool':
                     out.write('T' if value else 'F')
                 elif kind == 'bytes':
@@ -357,14 +363,15 @@ def _write_tdb(out, tables, decimals):
 
 class MetaField:
 
-    def __init__(self, name, kind, nullable=False):
+    def __init__(self, name, kind, *, null_allowed=False):
         self.name = name
         self.kind = kind
-        self.nullable = nullable
+        self.null_allowed = null_allowed
 
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.name!r}, {self.kind!r})'
+        return (f'{self.__class__.__name__}({self.name!r}, {self.kind!r}, '
+                f'null_allowed={self.null_allowed!r})')
 
 
 class Table:
@@ -400,6 +407,13 @@ class Table:
 
 class Error(Exception):
     pass
+
+
+E140 = ('E140#{lino}:{kind} fields don\'t allow nulls: provide a valid '
+        '{kind} or change the field\'s type to {kind}?')
+
+E240 = ('E240:can\'t write null to a not null field: provide a valid '
+        '{kind} or change the field\'s type to {kind}?')
 
 
 if __name__ == '__main__':
