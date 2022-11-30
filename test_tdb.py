@@ -15,7 +15,7 @@ class TestTdb(unittest.TestCase):
         # self.maxDiff = None
         self.filenames = [os.path.expanduser(f'~/app/go/tdb/eg/{name}.tdb')
                           for name in ('classic', 'csv', 'db1',
-                                       'incidents')]
+                                       'incidents', 'empty', 'tiny')]
 
 
     def test_01(self):
