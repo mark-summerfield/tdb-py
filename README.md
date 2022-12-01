@@ -3,11 +3,17 @@
 Tdb “Text DataBase” format is a plain text human readable typed database
 storage format.
 
-Tdb provides a superior alternative to CSV. In particular, Tdb tables are
-named and Tdb fields are strictly typed. Also, there is a clear distinction
-between field names and data values, and strings respect whitespace
-(including newlines) and have no problems with commas, quotes, etc.
-Perhaps best of all, a single Tdb file may contain one—or more—tables.
+Tdb is an ideal alternative to CSV. A Tdb file can store any number of
+tables. Every table is named, and every field has a name and a type. Types
+are not-null by default, but can be nullable if required. The seven
+supported types include strings which respect all whitespace (including
+newlines), and which may contain any UTF-8 characters (using XML-escaping
+conventions), binary (e.g., for images), Booleans, numbers (integer and
+real), and dates and datetimes.
+
+Tdb libraries are available in Go and Python with a Rust library _in
+development_. The Tdb format is designed to be very easy to parse, so
+creating a Tdb library in virtually any language should be straightforward.
 
 - [Datatypes](#datatypes)
 - [Examples](#examples)
@@ -173,10 +179,9 @@ shown above.
 |-----------|------------|-----------------------------|
 |tdb-go|Go|https://pkg.go.dev/github.com/mark-summerfield/tdb-go|
 |tdb-py|Python|https://pypi.org/project/tdb-py|
-|tdb-rs|Rust|https://crates.io/crates/tdb-rs|
+|tdb-rs|Rust|https://crates.io/crates/tdb-rs _(in development)_|
 
-We will happily add links to implementations in other languages if they pass
-the tests. (Tdb is a relatively simple format to parse and write.) 
+We will happily add links to implementations in other languages.
 
 ## BNF
 
