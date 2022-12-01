@@ -185,7 +185,10 @@ We will happily add links to implementations in other languages.
 
 ## BNF
 
-A Tdb file consists of one or more tables.
+Tdb files use the UTF-8 encoding. Tdb syntactical elements are all ASCII, so
+it is possible to read Tdb files as bytes (as the Go library does) or as
+Unicode characters (as the Python library does). Each Tdb file consists of
+one or more tables.
 
     TDB         ::= TABLE+
     TABLE       ::= OWS '[' OWS TABLEDEF OWS '%' OWS RECORD* OWS ']' OWS
