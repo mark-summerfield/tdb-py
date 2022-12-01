@@ -23,7 +23,7 @@ from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-__version__ = '0.9.2'
+__version__ = '0.9.3'
 
 
 class Tdb:
