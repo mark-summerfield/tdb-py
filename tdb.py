@@ -23,7 +23,7 @@ from xml.sax.saxutils import escape, unescape
 
 import editabletuple
 
-__version__ = '0.9.3'
+__version__ = '0.9.4'
 
 
 class Tdb:
@@ -398,6 +398,10 @@ class Table:
 
     def append(self, record):
         self.records.append(record)
+
+
+    def __iter__(self):
+        return iter(self.records)
 
 
     def __repr__(self):
