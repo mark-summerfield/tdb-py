@@ -19,6 +19,7 @@ creating a Tdb library in virtually any language should be straightforward.
 - [Examples](#examples)
     - [CSV](#csv)
     - [Database](#database)
+    - [Config](#config)
     - [Minimal Tdb Files](#minimal-tdb-files)
 - [Timezones and Metadata](#timezones-and-metadata)
 - [Libraries](#libraries) (Go, Python, Rust)
@@ -118,6 +119,51 @@ viable alternative. For example:
 In the Customers table the second customer's Address and in the Invoices
 table, the second invoice's Description both have nulls as their values. (No
 other fields may have nulls only these fields are nullable).
+
+### Config
+
+Configuration files often consist of key–value pairs or grouped key–value
+pairs. For example, a `.ini` file like this:
+
+    symbols=latin
+    [Window]
+    x=32
+    y=28
+    [Colors]
+    foreground=lightyellow
+    background=#FFE7FF
+
+could be represented by a `.tdb` like this:
+
+    [config_int key str value int
+    %
+    <x> 32
+    <y> 28
+    ]
+    [config_str key str value str
+    %
+    <foreground> <lightyellow>
+    <background> <#FFE7FF>
+    <symbols> <latin>
+    ]
+
+And if grouping were required, like this:
+
+    [config_int group str? key str value int
+    %
+    <Window> <x> 32
+    <Window> <y> 28
+    ]
+    [config_str group str? key str value str
+    %
+    <Colors> <foreground> <lightyellow>
+    <Colors> <background> <#FFE7FF>
+    ? <symbols> <latin>
+    ]
+
+Here, we've allowed `group` to be `null` (equivalent to the `.ini` "General"
+group), but we could easily have made it not-null and required a group name
+for all groups.
 
 ### Minimal Tdb Files
 
